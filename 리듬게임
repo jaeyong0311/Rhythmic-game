@@ -1,0 +1,81 @@
+using UnityEngine;
+using System.Collections.Generic;
+
+public class NodeSpawner : MonoBehaviour
+{
+    public GameObject[] nodePrefabs; // 노드 프리팹 배열 (Node1, Node2, Node3, Node4)
+    public Transform[] spawnPoints; // 노드를 생성할 위치들
+    public float spawnInterval = 2f; // 노드 생성 주기
+    public float disappearY = -10f; // 노드가 사라질 y 위치
+    public float fallSpeed = 5f; // 노드의 낙하 속도
+
+    private float timer;
+
+    void Update()
+    {
+        timer += Time.deltaTime;
+        if (timer >= spawnInterval)
+        {
+            SpawnNode();
+            timer = 0f; // 타이머 초기화
+        }
+
+        // 각 키를 눌렀을 때 해당 태그의 노드를 삭제
+        if (Input.GetKeyDown(KeyCode.A)) DestroyNodesByTag("Node1");
+        if (Input.GetKeyDown(KeyCode.S)) DestroyNodesByTag("Node2");
+        if (Input.GetKeyDown(KeyCode.K)) DestroyNodesByTag("Node3");
+        if (Input.GetKeyDown(KeyCode.L)) DestroyNodesByTag("Node4");
+    }
+
+    void SpawnNode()
+    {
+        if (spawnPoints.Length == 0 || nodePrefabs.Length == 0)
+        {
+            Debug.LogWarning("Spawn points or node prefabs are not assigned.");
+            return;
+        }
+
+        foreach (Transform spawnPoint in spawnPoints)
+        {
+            GameObject prefab = nodePrefabs[Random.Range(0, nodePrefabs.Length)];
+            if (prefab != null && spawnPoint != null)
+            {
+                GameObject newNode = Instantiate(prefab, spawnPoint.position, spawnPoint.rotation);
+                NodeMovement nodeMovement = newNode.AddComponent<NodeMovement>();
+                nodeMovement.disappearY = disappearY;
+                nodeMovement.fallSpeed = fallSpeed;
+
+                // spawnPoints의 인덱스를 사용하여 태그를 설정
+                newNode.tag = "Node" + (System.Array.IndexOf(spawnPoints, spawnPoint) + 1);
+            }
+        }
+    }
+  
+    void DestroyNodesByTag(string tag)
+    {
+        // 태그가 일치하는 노드를 찾고 삭제
+        GameObject[] nodes = GameObject.FindGameObjectsWithTag(tag);
+        List<GameObject> sortedNodes = new List<GameObject>(nodes);
+        sortedNodes.Sort((a, b) => a.transform.position.y.CompareTo(b.transform.position.y)); // 아래부터 삭제
+
+        foreach (GameObject node in sortedNodes)
+        {
+            Destroy(node);
+        }
+    }
+
+    public class NodeMovement : MonoBehaviour
+    {
+        public float disappearY = -10f; // 노드가 사라질 y 위치
+        public float fallSpeed = 5f;    // 노드의 낙하 속도
+        
+        void Update()
+        {
+            // 노드를 아래로 이동
+            transform.Translate(Vector3.down * fallSpeed * Time.deltaTime);
+
+            // 지정된 y 위치보다 아래로 내려가면 노드 제거
+            if (transform.position.y < disappearY) Destroy(gameObject);
+        }
+    }
+}
